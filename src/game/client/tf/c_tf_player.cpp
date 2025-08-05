@@ -673,6 +673,9 @@ void C_TFRagdoll::ImpactTrace( trace_t *pTrace, int iDamageType, const char *pCu
 	m_pRagdoll->ResetRagdollSleepAfterTime();
 }
 
+ConVar tf_spooky_ragdoll_ashtexture("tf_spooky_ragdoll_ashtexture", "1", FCVAR_ARCHIVE, "Should spooky ragdolls switch to ash?");
+ConVar tf_spooky_ragdoll_disappeartime("tf_spooky_ragdoll_disappeartime", "2.f", FCVAR_ARCHIVE, "How long until the ragdoll should disappear? Set to 9999.f if you don't want it to I guess");
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  :  - 
@@ -977,11 +980,12 @@ void C_TFRagdoll::CreateTFRagdoll()
 	if ( m_bSpookyRagdoll )
 	{
 		// Ash texture...we've been spooked into flames!
-		materialOverrideFilename = "models/player/shared/ash_player.vmt";
+		if(tf_spooky_ragdoll_ashtexture.GetBool())
+			materialOverrideFilename = "models/player/shared/ash_player.vmt";
 
 		EmitSound("TFPlayer.SpookyDissolve");
 		ParticleProp()->Create("halloween_spooky_ragdoll", PATTACH_ABSORIGIN_FOLLOW);
-		m_flTimeToDissolve = 2.0f;
+		m_flTimeToDissolve = tf_spooky_ragdoll_disappeartime.GetFloat();
 	}
 
 	if ( materialOverrideFilename )
