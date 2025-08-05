@@ -502,3 +502,22 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/src/vpc_scripts
+/src/tools
+*.exe
+src/createallprojects.bat
+src/vpc_scripts/projects.vgc
+game/mod_tf/voice_ban.dt
+game/mod_tf/stats.txt
+game/mod_tf/media/viewed.res
+src/createallprojects.bat
+src/vpc_scripts/projects.vgc
+game/mod_tf/GameState.txt
+game/mod_tf/downloadlists/itemtest.lst
+game/mod_tf/cfg/server_blacklist.txt
+game/mod_tf/cfg/local_loadout.txt
+game/mod_tf/cfg/a.itf
+*.bat
+*.vgc
+src/createallprojects.bat
+src/vpc_scripts/projects.vgc
