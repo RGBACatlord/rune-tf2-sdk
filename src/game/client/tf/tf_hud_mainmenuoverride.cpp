@@ -649,6 +649,8 @@ void CHudMainMenuOverride::ApplySchemeSettings( IScheme *scheme )
 
 	GetMMDashboard();
 	GetCompRanksTooltip();
+
+	engine->ClientCmd("stopsound\n");
 }
 
 //-----------------------------------------------------------------------------

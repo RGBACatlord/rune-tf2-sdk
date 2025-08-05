@@ -19,6 +19,8 @@ extern ConVar tf_spy_invis_unstealth_time;
 extern ConVar tf_spy_cloak_consume_rate;
 extern ConVar tf_spy_cloak_regen_rate;
 
+ConVar tf_test_cloak_spell("tf_test_cloak_spell", "0", FCVAR_ARCHIVE, "Test Spy cloak spell particle effect.");
+
 //=============================================================================
 //
 // TFWeaponBase Melee tables.
@@ -213,6 +215,22 @@ bool CTFWeaponInvis::ActivateInvisibilityWatch( void )
 			// Do standard cloak.
 			pOwner->m_Shared.AddCond( TF_COND_STEALTHED, -1.f, pOwner );
 
+#ifdef CLIENT_DLL
+			// [rune] HALLOWEEN SPELL: Play a particle effect for cloak spell
+			int iCloakSmoke = 0;
+			CALL_ATTRIB_HOOK_INT( iCloakSmoke, "halloween_cloak_smoke" );
+			if (tf_test_cloak_spell.GetInt() > 0)
+				iCloakSmoke = tf_test_cloak_spell.GetInt();
+
+			if ( iCloakSmoke > 0) {
+				DispatchParticleEffect( 
+					iCloakSmoke == 1 ? "halloween_cloak_smoke" : 
+					( pOwner->m_Shared.GetDisplayedTeam() == TF_TEAM_RED ? "halloween_cloak_smoke_red" : "halloween_cloak_smoke_blue" ),
+					PATTACH_ABSORIGIN_FOLLOW, pOwner 
+				);
+			}
+
+#endif
 
 			bDoSkill = true;
 		}

@@ -532,6 +532,7 @@ IMPLEMENT_CLIENTCLASS_DT_NOBASE( C_TFRagdoll, DT_TFRagdoll, CTFRagdoll )
 	RecvPropUtlVector( RECVINFO_UTLVECTOR( m_hRagWearables ), 8,	RecvPropEHandle(NULL, 0, 0) ),
 	RecvPropBool( RECVINFO( m_bGoldRagdoll ) ),
 	RecvPropBool( RECVINFO( m_bIceRagdoll ) ),
+	RecvPropBool( RECVINFO( m_bSpookyRagdoll ) ),
 	RecvPropBool( RECVINFO( m_bCritOnHardHit ) ),
 	RecvPropFloat( RECVINFO( m_flHeadScale ) ),
 	RecvPropFloat( RECVINFO( m_flTorsoScale ) ),
@@ -559,6 +560,7 @@ C_TFRagdoll::C_TFRagdoll()
 	m_iDamageCustom = 0;
 	m_bGoldRagdoll = false;
 	m_bIceRagdoll = false;
+	m_bSpookyRagdoll = false;
 	m_freezeTimer.Invalidate();
 	m_frozenTimer.Invalidate();
 	m_iTeam = -1;
@@ -922,7 +924,7 @@ void C_TFRagdoll::CreateTFRagdoll()
 		ClientLeafSystem()->SetRenderGroup( GetRenderHandle(), RENDER_GROUP_TRANSLUCENT_ENTITY );
 	}
 
-	if ( m_bBurning )
+	if ( m_bBurning && !m_bSpookyRagdoll)
 	{
 		m_flBurnEffectStartTime = gpGlobals->curtime;
 		ParticleProp()->Create( "burningplayer_corpse", PATTACH_ABSORIGIN_FOLLOW );
@@ -970,6 +972,16 @@ void C_TFRagdoll::CreateTFRagdoll()
 	{
 		// Ice texture...we've been turned into an ice statue!
 		materialOverrideFilename = "models/player/shared/ice_player.vmt";
+	}
+
+	if ( m_bSpookyRagdoll )
+	{
+		// Ash texture...we've been spooked into flames!
+		materialOverrideFilename = "models/player/shared/ash_player.vmt";
+
+		EmitSound("TFPlayer.SpookyDissolve");
+		ParticleProp()->Create("halloween_spooky_ragdoll", PATTACH_ABSORIGIN_FOLLOW);
+		m_flTimeToDissolve = 2.0f;
 	}
 
 	if ( materialOverrideFilename )
@@ -1467,6 +1479,25 @@ void C_TFRagdoll::ClientThink( void )
 			{
 				CreateTFGibs( true, true );
 				return;
+			}
+		}
+		else if ( m_bSpookyRagdoll )
+		{
+			m_flTimeToDissolve -= gpGlobals->frametime;
+			if (m_flTimeToDissolve <= 0)
+			{
+				AddEffects(EF_NODRAW);
+				for (C_BaseEntity* pEntity = ClientEntityList().FirstBaseEntity(); pEntity; pEntity = ClientEntityList().NextBaseEntity(pEntity))
+				{
+					if (pEntity->GetFollowedEntity() == this)
+					{
+						CEconEntity* pItem = dynamic_cast<CEconEntity*>(pEntity);
+						if (pItem)
+						{
+							pItem->AddEffects(EF_NODRAW);
+						}
+					}
+				}
 			}
 		}
 	}

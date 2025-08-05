@@ -106,6 +106,9 @@ void ParseParticleEffects( bool bLoadSheets, bool bPrecache )
 		g_pParticleSystemMgr->ReadParticleConfigFile( files[i], bPrecache, false );
 	}
 
+	// For testing
+	g_pParticleSystemMgr->ReadParticleConfigFile( "!particles/include.pcf", true, false );
+
 	g_pParticleSystemMgr->DecommitTempMemory();
 }
 

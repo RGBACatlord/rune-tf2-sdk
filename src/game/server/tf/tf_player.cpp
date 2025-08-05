@@ -142,6 +142,7 @@
 
 #pragma warning( disable: 4355 ) // disables ' 'this' : used in base member initializer list'
 
+
 ConVar sv_motd_unload_on_dismissal( "sv_motd_unload_on_dismissal", "0", 0, "If enabled, the MOTD contents will be unloaded when the player closes the MOTD." );
 
 #define DAMAGE_FORCE_SCALE_SELF				9
@@ -247,6 +248,8 @@ extern ConVar tf_mvm_buybacks_per_wave;
 ConVar tf_halloween_unlimited_spells( "tf_halloween_unlimited_spells", "0", FCVAR_CHEAT );
 extern ConVar tf_halloween_kart_boost_recharge;
 extern ConVar tf_halloween_kart_boost_duration;
+
+ConVar tf_test_spooky_ragdolls( "tf_test_spooky_ragdolls", "0", FCVAR_ARCHIVE, "All killed players will be spooky." );
 
 ConVar tf_halloween_kart_impact_force( "tf_halloween_kart_impact_force", "0.75f", FCVAR_CHEAT, "Impact force scaler" );
 ConVar tf_halloween_kart_impact_damage( "tf_halloween_kart_impact_damage", "1.0f", FCVAR_CHEAT, "Impact damage scaler" );
@@ -431,6 +434,7 @@ public:
 	CNetworkVar( int, m_iClass );
 	CNetworkVar( bool, m_bGoldRagdoll );
 	CNetworkVar( bool, m_bIceRagdoll );
+	CNetworkVar( bool, m_bSpookyRagdoll )
 	CNetworkVar( bool, m_bCritOnHardHit );
 	CNetworkVar( float, m_flHeadScale );
 	CNetworkVar( float, m_flTorsoScale );
@@ -460,6 +464,7 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CTFRagdoll, DT_TFRagdoll )
 	SendPropUtlVector( SENDINFO_UTLVECTOR( m_hRagWearables ), 8, SendPropEHandle( NULL, 0 ) ),
 	SendPropBool( SENDINFO( m_bGoldRagdoll ) ),
 	SendPropBool( SENDINFO( m_bIceRagdoll ) ),
+	SendPropBool( SENDINFO( m_bSpookyRagdoll ) ),
 	SendPropBool( SENDINFO( m_bCritOnHardHit ) ),
 	SendPropFloat( SENDINFO( m_flHeadScale ) ),
 	SendPropFloat( SENDINFO( m_flTorsoScale ) ),
@@ -3123,6 +3128,9 @@ void CTFPlayer::PrecacheTFPlayer()
 	// precache the EOTL bomb cart replacements
 	PrecacheModel( "models/props_trainyard/bomb_eotl_blue.mdl" );
 	PrecacheModel( "models/props_trainyard/bomb_eotl_red.mdl" );
+
+	PrecacheParticleSystem( "halloween_cloak_smoke" );
+	PrecacheParticleSystem( "halloween_spooky_ragdoll" );
 }
 
 //-----------------------------------------------------------------------------
@@ -12703,10 +12711,14 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	}
 
 	int iGoldRagdoll = 0;
+	int iSpookyRagdoll = 0;
 	if ( pKillerWeapon )
 	{
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( pKillerWeapon, iGoldRagdoll, set_turn_to_gold );
+		CALL_ATTRIB_HOOK_INT_ON_OTHER( pKillerWeapon, iSpookyRagdoll, halloween_spooky_ragdolls );
 	}
+
+	iSpookyRagdoll = tf_test_spooky_ragdolls.GetBool() != 0;
 
 	int iRagdollsBecomeAsh = 0;
 	if ( info.GetWeapon() )
@@ -12744,7 +12756,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 // 			}
 // 		}
 
-		CreateRagdollEntity( bGib, bBurning, bElectrocuted, bOnGround, bCloakedCorpse, iGoldRagdoll != 0, iIceRagdoll != 0, iRagdollsBecomeAsh != 0, iCustomDamage, ( iCritOnHardHit != 0 ) );
+		CreateRagdollEntity( bGib, bBurning, bElectrocuted, bOnGround, bCloakedCorpse, iGoldRagdoll != 0, iIceRagdoll != 0, iSpookyRagdoll !=0, iRagdollsBecomeAsh != 0, iCustomDamage, ( iCritOnHardHit != 0 ) );
 	}
 
 
@@ -15581,13 +15593,13 @@ void CTFPlayer::StopRagdollDeathAnim( void )
 //-----------------------------------------------------------------------------
 void CTFPlayer::CreateRagdollEntity( void )
 {
-	CreateRagdollEntity( false, false, false, false, false, false, false, false );
+	CreateRagdollEntity( false, false, false, false, false, false, false, false, false );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Create a ragdoll entity to pass to the client.
 //-----------------------------------------------------------------------------
-void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocuted, bool bOnGround, bool bCloakedCorpse, bool bGoldRagdoll, bool bIceRagdoll, bool bBecomeAsh, int iDamageCustom, bool bCritOnHardHit )
+void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocuted, bool bOnGround, bool bCloakedCorpse, bool bGoldRagdoll, bool bIceRagdoll, bool bSpookyRagdoll, bool bBecomeAsh, int iDamageCustom, bool bCritOnHardHit )
 {
 	// If we already have a ragdoll destroy it.
 	CTFRagdoll *pRagdoll = dynamic_cast<CTFRagdoll*>( m_hRagdoll.Get() );
@@ -15617,6 +15629,7 @@ void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocute
 		pRagdoll->m_iClass = GetPlayerClass()->GetClassIndex();
 		pRagdoll->m_bGoldRagdoll = bGoldRagdoll;
 		pRagdoll->m_bIceRagdoll = bIceRagdoll;
+		pRagdoll->m_bSpookyRagdoll = bSpookyRagdoll;
 		pRagdoll->m_bBecomeAsh = bBecomeAsh;
 		pRagdoll->m_bCritOnHardHit = bCritOnHardHit;
 		pRagdoll->m_flHeadScale = m_flHeadScale;
@@ -15831,6 +15844,13 @@ void CTFPlayer::CreateFeignDeathRagdoll( const CTakeDamageInfo& info, bool bGib,
 				CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iIceRagdoll, set_turn_to_ice );
 			}
 			pRagdoll->m_bIceRagdoll = iIceRagdoll != 0;
+
+			int iSpookyRagdoll = 0;
+			if (info.GetWeapon())
+			{
+				CALL_ATTRIB_HOOK_INT_ON_OTHER(info.GetWeapon(), iSpookyRagdoll, halloween_spooky_ragdolls);
+			}
+			pRagdoll->m_bSpookyRagdoll = iSpookyRagdoll != 0;
 
 			int iRagdollsBecomeAsh = 0;
 			if ( info.GetWeapon() )
