@@ -1,35 +1,32 @@
 "VertexlitGeneric"
 {
 	"$baseTexture" "models/player/shared/ash_player"
-	"$baseTextureTransform" "center .5 .5 scale 3 3 rotate 0 translate 0 0"
-	"$bumpmap" "models/player/shared/ash_player_bump" 
+	"$baseTextureTransform" "center .5 .5 scale 4 4 rotate 0 translate 0 0"
+	"$bumpmap" "models/player/shared/ash_player_bump.vtf"
 	"$detail" "models/player/shared/ash_player_flame.vtf"	
-	"$detailscale" "5"
-	"$detailblendfactor" 0.5
+	"$detailscale" "4"
+	"$detailblendfactor" 0.0
 	"$detailblendmode" 6
 	"$yellow" "0"
 
 	"$phong" "1"
-	"$phongtint" "[.6 0.5 2]"
-	"$phongexponent" "13"
-	"$phongboost" "2"
-	"$phongfresnelranges"	"[.1 2 1]"
+	"$phongtint" "[.6 0.4 2]"
+	"$phongexponent" "22"
+	"$phongboost" "1"
+	"$phongfresnelranges"	"[.1 2 2]"
 	"$phongwarptexture" "models/player/shared/ash_player_irid.vtf"
-	"$basemapalphaphongmask" "1"
+	"$basemapalphaphongmask" "0"
 
 	">=DX90"
 	{
 		"$selfillum" "1"
 	}
-	"$selfillumfresnel" "1"
 	"$selfillummask" "models/player/shared/ash_player_selfillum"
-
-	"$envmaptint" "[1.5 .2 1]"
 
 	// Rim lighting parameters
 	"$rimlight" "1"												// To enable rim lighting (requires phong)
-	"$rimlightexponent" "4"										// Exponent for phong component of rim lighting	
-	"$rimlightboost" "2"										// Boost for ambient cube component of rim lighting
+	"$rimlightexponent" "5"										// Exponent for phong component of rim lighting	
+	"$rimlightboost" "3"										// Boost for ambient cube component of rim lighting
 
 	// Cloaking
 	"$cloakPassEnabled" "1"
@@ -42,7 +39,7 @@
 		{
 			"animatedtexturevar" "$detail"
 			"animatedtextureframenumvar" "$detailframe"
-			"animatedtextureframerate" 15
+			"animatedtextureframerate" 24
 		}
 		"YellowLevel"
 		{
@@ -57,8 +54,8 @@
 		"Sine"
 		{
 			"sineperiod" "1"
-			"sinemin" "0.4"
-			"sinemax" "1"
+			"sinemin" "0.3"
+			"sinemax" "0.7"
 			"resultVar" "$detailblendfactor"
 		}
 		
@@ -68,6 +65,14 @@
 			"sinemin" "0"
 			"sinemax" "12"
 			"resultVar" "$phongfresnelranges[1]"
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "1"
+			"sinemin" "-13"
+			"sinemax" "24"
+			"resultVar" "$phongfresnelranges[2]"
 		}
 		
 		"Sine"

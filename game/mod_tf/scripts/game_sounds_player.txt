@@ -712,8 +712,20 @@
 		"wave"		"player/spookyburn_01.wav"
 		"wave"		"player/spookyburn_02.wav"
 		"wave"		"player/spookyburn_03.wav"
+		"wave"		"player/spookyburn_04.wav"
 	}
+}
 
+"TFPlayer.SpookyGib"
+{
+	"channel"	"CHAN_STATIC"
+	"volume"	"1.0"
+	"soundlevel"  	"SNDLVL_75dB"
+	"rndwave"
+	{
+		"wave"		"player/spookygib_01.wav"
+		"wave"		"player/spookygib_02.wav"
+	}
 }
 
 //-----------------------------------------------------------------------------

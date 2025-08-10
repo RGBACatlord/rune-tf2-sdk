@@ -12432,6 +12432,23 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			// Catches the case where we're killed directly by the sentrygun (i.e. bullets)
 			// Look at the sentrygun
 			m_hObserverTarget.Set( info.GetInflictor() ); 
+
+			//// [rune] HALLOWEEN: Spooky ragdolls for sentry kills with spelled Wrench
+			//CTFPlayer* pSentryOwner = ToTFPlayer(info.GetInflictor()->GetOwnerEntity());
+			//if ( pSentryOwner )
+			//{
+			//	CTFWeaponBase* pWrench = pSentryOwner->GetActiveTFWeapon();
+			//	if( pWrench )
+			//	{
+			//		int iSpookyRagdoll = 0;
+			//		CALL_ATTRIB_HOOK_INT_ON_OTHER( pWrench, iSpookyRagdoll, halloween_spooky_ragdolls );
+
+			//		if ( iSpookyRagdoll > 0 || tf_test_spooky_ragdolls.GetBool() )
+			//		{
+			//			
+			//		}
+			//	}
+			//}
 		}
 		// See if we were killed by a projectile emitted from a base object. The attacker
 		// will still be the owner of that object, but we want the deathcam to point to the 
@@ -12711,14 +12728,10 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	}
 
 	int iGoldRagdoll = 0;
-	int iSpookyRagdoll = 0;
 	if ( pKillerWeapon )
 	{
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( pKillerWeapon, iGoldRagdoll, set_turn_to_gold );
-		CALL_ATTRIB_HOOK_INT_ON_OTHER( pKillerWeapon, iSpookyRagdoll, halloween_spooky_ragdolls );
 	}
-
-	iSpookyRagdoll = tf_test_spooky_ragdolls.GetBool() != 0;
 
 	int iRagdollsBecomeAsh = 0;
 	if ( info.GetWeapon() )
@@ -12730,6 +12743,13 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	if ( info.GetWeapon() )
 	{
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iRagdollsPlasmaEffect, ragdolls_plasma_effect );
+	}
+
+	int iSpookyRagdoll = 0;
+	if ( info.GetWeapon() )
+	{
+		CALL_ATTRIB_HOOK_INT_ON_OTHER(pKillerWeapon, iSpookyRagdoll, halloween_spooky_ragdolls);
+		iSpookyRagdoll = tf_test_spooky_ragdolls.GetBool() != 0;
 	}
 
 	int iCustomDamage = info.GetDamageCustom();

@@ -980,12 +980,13 @@ void C_TFRagdoll::CreateTFRagdoll()
 	if ( m_bSpookyRagdoll )
 	{
 		// Ash texture...we've been spooked into flames!
-		if(tf_spooky_ragdoll_ashtexture.GetBool())
+		if(tf_spooky_ragdoll_ashtexture.GetBool() && !m_bGoldRagdoll && !m_bIceRagdoll)
 			materialOverrideFilename = "models/player/shared/ash_player.vmt";
+
+		m_flTimeToDissolve = tf_spooky_ragdoll_disappeartime.GetFloat();
 
 		EmitSound("TFPlayer.SpookyDissolve");
 		ParticleProp()->Create("halloween_spooky_ragdoll", PATTACH_ABSORIGIN_FOLLOW);
-		m_flTimeToDissolve = tf_spooky_ragdoll_disappeartime.GetFloat();
 	}
 
 	if ( materialOverrideFilename )
@@ -1243,6 +1244,10 @@ void C_TFRagdoll::OnDataChanged( DataUpdateType_t type )
 			pPlayer->UpdateMVMEyeGlowEffect( false );
 		}
 
+		// [rune] Don't gib if this ragdoll is spooky (killed with a spelled weapon)
+		//if ( m_bSpookyRagdoll )
+		//	m_bGib = false;
+
 		if ( bCreateRagdoll )
 		{
 			if ( m_bGib )
@@ -1485,12 +1490,14 @@ void C_TFRagdoll::ClientThink( void )
 				return;
 			}
 		}
-		else if ( m_bSpookyRagdoll )
+		// [rune] HALLOWEEN: Should we stick around for Spycicles? Is is just for halloween so...
+		else if ( m_bSpookyRagdoll /*&& !m_bIceRagdoll*/ )
 		{
 			m_flTimeToDissolve -= gpGlobals->frametime;
-			if (m_flTimeToDissolve <= 0)
+			if ( m_flTimeToDissolve <= 0 )
 			{
 				AddEffects(EF_NODRAW);
+
 				for (C_BaseEntity* pEntity = ClientEntityList().FirstBaseEntity(); pEntity; pEntity = ClientEntityList().NextBaseEntity(pEntity))
 				{
 					if (pEntity->GetFollowedEntity() == this)
@@ -7436,6 +7443,7 @@ void C_TFPlayer::CreatePlayerGibs( const Vector &vecOrigin, const Vector &vecVel
 		{
 			CheckAndUpdateGibType();
 			m_hFirstGib = CreateGibsFromList( m_aGibs, nModelIndex, NULL, breakParams, this, -1 , false, true, &m_hSpawnedGibs, bBurning );
+
 		}
 		DropPartyHat( breakParams, vecBreakVelocity );
 	}

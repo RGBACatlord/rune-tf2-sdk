@@ -521,3 +521,12 @@ game/mod_tf/cfg/a.itf
 *.vgc
 src/createallprojects.bat
 src/vpc_scripts/projects.vgc
+*.itf
+*.scr
+/game/mod_tf/downloadlists
+/game/mod_tf/maps
+/game/mod_tf/scripts/items
+*.vdf
+game/mod_tf/tf2_playerstats.dmx
+src/vpc_scripts/projects.vgc
+src/vpc_scripts/projects.vgc
