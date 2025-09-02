@@ -358,6 +358,9 @@ static ConVar tf_medieval_cam_idealpitch( "tf_medieval_cam_idealpitch", "0", FCV
 extern ConVar cam_idealpitch;
 extern ConVar tf_allow_taunt_switch;
 
+// Min velocity before "taunt moving sound loop" fades in
+#define TAUNT_MOVEMENT_SOUND_THRESHOLD 20
+
 static void PromptAcceptReviveCallback( bool bCancel, void *pContext )
 {
 	if ( bCancel )
@@ -3856,6 +3859,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_angTauntPredViewAngles.Init();
 	m_angTauntEngViewAngles.Init();
 	m_pTauntSoundLoop = NULL;
+	m_pTauntSoundMovingLoop = NULL;
 
 	m_flWaterImpactTime = 0.0f;
 //	m_rtSpottedInPVSTime = 0;
@@ -5716,14 +5720,22 @@ void C_TFPlayer::TauntCamInterpolation()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void C_TFPlayer::PlayTauntSoundLoop( const char *pszSoundLoopName )
+void C_TFPlayer::PlayTauntSoundLoop( const char *pszSoundLoopName, const char* pszSoundMovingLoopName )
 {
 	if ( pszSoundLoopName && *pszSoundLoopName )
 	{
 		CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
 		CPASAttenuationFilter filter( this );
 		m_pTauntSoundLoop = controller.SoundCreate( filter, entindex(), pszSoundLoopName );
-		controller.Play( m_pTauntSoundLoop, 1.0, 100 );
+		controller.Play( m_pTauntSoundLoop, 1.0, 100, 0.f );
+	}
+
+	if (pszSoundMovingLoopName && *pszSoundMovingLoopName)
+	{
+		CSoundEnvelopeController& controller = CSoundEnvelopeController::GetController();
+		CPASAttenuationFilter filter(this);
+		m_pTauntSoundMovingLoop = controller.SoundCreate(filter, entindex(), pszSoundMovingLoopName);
+		controller.Play( m_pTauntSoundMovingLoop, 0.1, 100, 0.f ); // start off quiet
 	}
 }
 
@@ -5738,6 +5750,13 @@ void C_TFPlayer::StopTauntSoundLoop()
 		CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
 		controller.SoundDestroy( m_pTauntSoundLoop );
 		m_pTauntSoundLoop = NULL;
+	}
+
+	if ( m_pTauntSoundMovingLoop )
+	{
+		CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
+		controller.SoundDestroy( m_pTauntSoundMovingLoop );
+		m_pTauntSoundMovingLoop = NULL;
 	}
 }
 
@@ -5967,6 +5986,17 @@ void C_TFPlayer::ClientThink()
 		CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
 		controller.SoundDestroy( m_pFallingSoundLoop );
 		m_pFallingSoundLoop = NULL;
+	}
+
+	// Update taunt movement sound loop.
+	// TODO:	I'm not too bothered by it, but volume 0.1 is still slightly audible, and volume 0 throws the tracks out of sync!
+	//			Probably a better way to do this but for most taunts this shouldn't be a problem
+	if (m_pTauntSoundMovingLoop)
+	{
+		bool bIsMoving = GetAbsVelocity().Length() > TAUNT_MOVEMENT_SOUND_THRESHOLD;
+		CSoundEnvelopeController& controller = CSoundEnvelopeController::GetController();
+		controller.SoundChangeVolume(m_pTauntSoundMovingLoop, bIsMoving ? 1.f : 0.1f, 0.2f);
+		controller.SoundChangeVolume(m_pTauntSoundLoop, bIsMoving ? 0.1f : 1.f, 0.2f);
 	}
 
 	if ( HasTheFlag() && GetGlowObject() )

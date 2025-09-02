@@ -440,7 +440,7 @@ public:
 	float			GetPrevTauntYaw( void )		{ return m_flPrevTauntYaw; }
 	void			SetTauntYaw( float flTauntYaw );
 	int				GetActiveTauntSlot() const { return m_nActiveTauntSlot; }
-	void			PlayTauntSoundLoop( const char *pszSoundLoopName );
+	void			PlayTauntSoundLoop( const char *pszSoundLoopName, const char* pszSoundMovingLoopName );
 	void			StopTauntSoundLoop();
 	float			GetCurrentTauntMoveSpeed() const { return m_flCurrentTauntMoveSpeed; }
 	void			SetCurrentTauntMoveSpeed( float flSpeed ) { m_flCurrentTauntMoveSpeed = flSpeed; }
@@ -550,6 +550,7 @@ private:
 	QAngle				m_angTauntEngViewAngles;
 
 	CSoundPatch			*m_pTauntSoundLoop;
+	CSoundPatch			*m_pTauntSoundMovingLoop;
 
 	C_TFPlayerClass		m_PlayerClass;
 

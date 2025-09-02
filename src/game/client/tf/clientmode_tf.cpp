@@ -2408,7 +2408,9 @@ USER_MESSAGE( PlayerTauntSoundLoopStart )
 	{
 		char szTauntSoundLoopName[256];
 		msg.ReadString( szTauntSoundLoopName, sizeof(szTauntSoundLoopName) );
-		pPlayer->PlayTauntSoundLoop( szTauntSoundLoopName );
+		char szTauntSoundMovingLoopName[256];
+		msg.ReadString( szTauntSoundMovingLoopName, sizeof(szTauntSoundMovingLoopName) );
+		pPlayer->PlayTauntSoundLoop( szTauntSoundLoopName, szTauntSoundMovingLoopName );
 	}
 }
 

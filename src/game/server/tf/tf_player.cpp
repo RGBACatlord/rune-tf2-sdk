@@ -1395,6 +1395,7 @@ void CTFPlayer::TFPlayerThink()
 			UserMessageBegin( filter, "PlayerTauntSoundLoopStart" );
 				WRITE_BYTE( entindex() );
 				WRITE_STRING( m_strTauntSoundLoopName.String() );
+				WRITE_STRING( m_strTauntSoundMovingLoopName.String() );
 			MessageEnd();
 
 			m_flTauntSoundLoopTime = 0.f;
@@ -17468,6 +17469,22 @@ bool CTFPlayer::PlayTauntSceneFromItem( const CEconItemView *pEconItemView )
 			}
 		}
 
+		// Should we play a moving sound?
+		Assert(m_strTauntSoundMovingLoopName.IsEmpty());
+		m_strTauntSoundMovingLoopName = ""; 
+		static CSchemaAttributeDefHandle pAttrDef_TauntMovingSoundLoop("taunt moving sound loop");
+		CAttribute_String attrTauntMovingSoundLoop;
+		if (pEconItemView->FindAttribute(pAttrDef_TauntMovingSoundLoop, &attrTauntMovingSoundLoop))
+		{
+			const char* pszTauntSoundMovingLoopName = attrTauntMovingSoundLoop.value().c_str();
+			Assert( pszTauntSoundMovingLoopName&& *pszTauntSoundMovingLoopName );
+			if ( pszTauntSoundMovingLoopName && *pszTauntSoundMovingLoopName )
+			{
+				// this will sync with the main sound
+				m_strTauntSoundMovingLoopName = pszTauntSoundMovingLoopName;
+			}
+		}
+
 		m_iTauntAttack = TAUNTATK_NONE;
 		m_flTauntAttackTime = 0.f;
 
@@ -18145,6 +18162,18 @@ void CTFPlayer::StopTaunt( bool bForceRemoveProp /* = true */ )
 	if ( m_TauntEconItemView.IsValid() )
 	{
 		SetFOV( this, m_iPreTauntFOV );
+
+		// Should we play an ending sound?
+		static CSchemaAttributeDefHandle pAttrDef_TauntEndSound("taunt end sound");
+		CAttribute_String attrTauntEndSound;
+		if (m_TauntEconItemView.FindAttribute(pAttrDef_TauntEndSound, &attrTauntEndSound))
+		{
+			const char* pszTauntEndSound = attrTauntEndSound.value().c_str();
+			if (pszTauntEndSound && *pszTauntEndSound)
+			{
+				EmitSound( pszTauntEndSound );
+			}
+		}
 	}
 
 	m_hHighFivePartner = NULL;
@@ -21420,6 +21449,7 @@ void CTFPlayer::StopTauntSoundLoop()
 		MessageEnd();
 
 		m_strTauntSoundLoopName = "";
+		m_strTauntSoundMovingLoopName = "";
 	}
 }
 

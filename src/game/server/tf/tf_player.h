@@ -900,6 +900,7 @@ private:
 	CUtlString			m_strTauntSoundName;
 	float				m_flTauntSoundLoopTime;
 	CUtlString			m_strTauntSoundLoopName;
+	CUtlString			m_strTauntSoundMovingLoopName;
 	CEconItemView		m_TauntEconItemView;
 
 	enum TauntStage_t
