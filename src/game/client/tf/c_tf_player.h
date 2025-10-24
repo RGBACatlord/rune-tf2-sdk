@@ -1103,6 +1103,7 @@ private:
 	int	  m_iDamageCustom;
 	bool  m_bGoldRagdoll;
 	bool  m_bIceRagdoll;
+	bool  m_bSpookyRagdoll;
 	CountdownTimer m_freezeTimer;
 	CountdownTimer m_frozenTimer;
 	int	  m_iTeam;

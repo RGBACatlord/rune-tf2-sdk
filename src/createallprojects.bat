@@ -1,1 +1,2 @@
-devtools\bin\vpc.exe /hl2mp /tf /define:SOURCESDK +everything /mksln everything.sln
+devtools\bin\vpc.exe /tf /define:SOURCESDK +pet /mksln asfafsfasf.sln
+pause

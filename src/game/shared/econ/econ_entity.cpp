@@ -517,6 +517,7 @@ const char* g_modelWhiteList[] =
 //-----------------------------------------------------------------------------
 bool CEconEntity::ValidateEntityAttachedToPlayer( bool &bShouldRetry )
 {
+	return true;
 	bShouldRetry = false;
 
 	// We only use this variable in debug or on the client.

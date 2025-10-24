@@ -106,6 +106,9 @@ void ParseParticleEffects( bool bLoadSheets, bool bPrecache )
 		g_pParticleSystemMgr->ReadParticleConfigFile( files[i], bPrecache, false );
 	}
 
+	// For testing
+	g_pParticleSystemMgr->ReadParticleConfigFile( "!particles/include.pcf", true, false );
+
 	g_pParticleSystemMgr->DecommitTempMemory();
 }
 
@@ -186,7 +189,7 @@ void ParseParticleEffectsMap( const char *pMapName, bool bLoadSheets )
 		V_snprintf( szMapManifestFilename, sizeof( szMapManifestFilename ), "maps/%s_particles.txt", pMapName );
 	}
 
-	KeyValues *manifest = new KeyValues( szMapManifestFilename );
+	KeyValuesAD manifest( szMapManifestFilename );
 
 	// In order:
 	//  - particles.txt within the map BSP

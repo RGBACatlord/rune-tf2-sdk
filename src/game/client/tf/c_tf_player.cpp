@@ -532,6 +532,7 @@ IMPLEMENT_CLIENTCLASS_DT_NOBASE( C_TFRagdoll, DT_TFRagdoll, CTFRagdoll )
 	RecvPropUtlVector( RECVINFO_UTLVECTOR( m_hRagWearables ), 8,	RecvPropEHandle(NULL, 0, 0) ),
 	RecvPropBool( RECVINFO( m_bGoldRagdoll ) ),
 	RecvPropBool( RECVINFO( m_bIceRagdoll ) ),
+	RecvPropBool( RECVINFO( m_bSpookyRagdoll ) ),
 	RecvPropBool( RECVINFO( m_bCritOnHardHit ) ),
 	RecvPropFloat( RECVINFO( m_flHeadScale ) ),
 	RecvPropFloat( RECVINFO( m_flTorsoScale ) ),
@@ -559,6 +560,7 @@ C_TFRagdoll::C_TFRagdoll()
 	m_iDamageCustom = 0;
 	m_bGoldRagdoll = false;
 	m_bIceRagdoll = false;
+	m_bSpookyRagdoll = false;
 	m_freezeTimer.Invalidate();
 	m_frozenTimer.Invalidate();
 	m_iTeam = -1;
@@ -670,6 +672,9 @@ void C_TFRagdoll::ImpactTrace( trace_t *pTrace, int iDamageType, const char *pCu
 
 	m_pRagdoll->ResetRagdollSleepAfterTime();
 }
+
+ConVar tf_spooky_ragdoll_ashtexture("tf_spooky_ragdoll_ashtexture", "1", FCVAR_ARCHIVE, "Should spooky ragdolls switch to ash?");
+ConVar tf_spooky_ragdoll_disappeartime("tf_spooky_ragdoll_disappeartime", "2.f", FCVAR_ARCHIVE, "How long until the ragdoll should disappear? Set to 9999.f if you don't want it to I guess");
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -922,7 +927,7 @@ void C_TFRagdoll::CreateTFRagdoll()
 		ClientLeafSystem()->SetRenderGroup( GetRenderHandle(), RENDER_GROUP_TRANSLUCENT_ENTITY );
 	}
 
-	if ( m_bBurning )
+	if ( m_bBurning && !m_bSpookyRagdoll)
 	{
 		m_flBurnEffectStartTime = gpGlobals->curtime;
 		ParticleProp()->Create( "burningplayer_corpse", PATTACH_ABSORIGIN_FOLLOW );
@@ -970,6 +975,18 @@ void C_TFRagdoll::CreateTFRagdoll()
 	{
 		// Ice texture...we've been turned into an ice statue!
 		materialOverrideFilename = "models/player/shared/ice_player.vmt";
+	}
+
+	if ( m_bSpookyRagdoll )
+	{
+		// Ash texture...we've been spooked into flames!
+		if(tf_spooky_ragdoll_ashtexture.GetBool() && !m_bGoldRagdoll && !m_bIceRagdoll)
+			materialOverrideFilename = "models/player/shared/ash_player.vmt";
+
+		m_flTimeToDissolve = tf_spooky_ragdoll_disappeartime.GetFloat();
+
+		EmitSound("TFPlayer.SpookyDissolve");
+		ParticleProp()->Create("halloween_spooky_ragdoll", PATTACH_ABSORIGIN_FOLLOW);
 	}
 
 	if ( materialOverrideFilename )
@@ -1227,6 +1244,10 @@ void C_TFRagdoll::OnDataChanged( DataUpdateType_t type )
 			pPlayer->UpdateMVMEyeGlowEffect( false );
 		}
 
+		// [rune] Don't gib if this ragdoll is spooky (killed with a spelled weapon)
+		//if ( m_bSpookyRagdoll )
+		//	m_bGib = false;
+
 		if ( bCreateRagdoll )
 		{
 			if ( m_bGib )
@@ -1467,6 +1488,27 @@ void C_TFRagdoll::ClientThink( void )
 			{
 				CreateTFGibs( true, true );
 				return;
+			}
+		}
+		// [rune] HALLOWEEN: Should we stick around for Spycicles? Is is just for halloween so...
+		else if ( m_bSpookyRagdoll /*&& !m_bIceRagdoll*/ )
+		{
+			m_flTimeToDissolve -= gpGlobals->frametime;
+			if ( m_flTimeToDissolve <= 0 )
+			{
+				AddEffects(EF_NODRAW);
+
+				for (C_BaseEntity* pEntity = ClientEntityList().FirstBaseEntity(); pEntity; pEntity = ClientEntityList().NextBaseEntity(pEntity))
+				{
+					if (pEntity->GetFollowedEntity() == this)
+					{
+						CEconEntity* pItem = dynamic_cast<CEconEntity*>(pEntity);
+						if (pItem)
+						{
+							pItem->AddEffects(EF_NODRAW);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -7401,6 +7443,7 @@ void C_TFPlayer::CreatePlayerGibs( const Vector &vecOrigin, const Vector &vecVel
 		{
 			CheckAndUpdateGibType();
 			m_hFirstGib = CreateGibsFromList( m_aGibs, nModelIndex, NULL, breakParams, this, -1 , false, true, &m_hSpawnedGibs, bBurning );
+
 		}
 		DropPartyHat( breakParams, vecBreakVelocity );
 	}

@@ -1,0 +1,96 @@
+"VertexlitGeneric"
+{
+	"$baseTexture" "models/player/shared/ash_player"
+	"$baseTextureTransform" "center .5 .5 scale 4 4 rotate 0 translate 0 0"
+	"$bumpmap" "models/player/shared/ash_player_bump.vtf"
+	"$detail" "models/player/shared/ash_player_flame.vtf"	
+	"$detailscale" "4"
+	"$detailblendfactor" 0.0
+	"$detailblendmode" 6
+	"$yellow" "0"
+
+	"$phong" "1"
+	"$phongtint" "[.6 0.4 2]"
+	"$phongexponent" "22"
+	"$phongboost" "1"
+	"$phongfresnelranges"	"[.1 2 2]"
+	"$phongwarptexture" "models/player/shared/ash_player_irid.vtf"
+	"$basemapalphaphongmask" "0"
+
+	">=DX90"
+	{
+		"$selfillum" "1"
+	}
+	"$selfillummask" "models/player/shared/ash_player_selfillum"
+
+	// Rim lighting parameters
+	"$rimlight" "1"												// To enable rim lighting (requires phong)
+	"$rimlightexponent" "5"										// Exponent for phong component of rim lighting	
+	"$rimlightboost" "3"										// Boost for ambient cube component of rim lighting
+
+	// Cloaking
+	"$cloakPassEnabled" "1"
+	"Proxies"
+	{
+		"invis"
+		{
+		}
+		"AnimatedTexture"
+		{
+			"animatedtexturevar" "$detail"
+			"animatedtextureframenumvar" "$detailframe"
+			"animatedtextureframerate" 24
+		}
+		"YellowLevel"
+		{
+			"resultVar" "$yellow"
+		}
+		"Equals"
+		{
+			"srcVar1" "$yellow"
+			"resultVar" "$color2"
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "1"
+			"sinemin" "0.3"
+			"sinemax" "0.7"
+			"resultVar" "$detailblendfactor"
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "1"
+			"sinemin" "0"
+			"sinemax" "12"
+			"resultVar" "$phongfresnelranges[1]"
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "1"
+			"sinemin" "-13"
+			"sinemax" "24"
+			"resultVar" "$phongfresnelranges[2]"
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "0.8"
+			"sinemin" "25"
+			"sinemax" "13"
+			"resultVar" "$rimlightboost" 
+		}
+		
+		"Sine"
+		{
+			"sineperiod" "2"
+			"sinemin" "0.1"
+			"sinemax" "2"
+			"resultVar" "$phongboost" 
+		}
+		
+	}
+
+}

@@ -142,6 +142,7 @@
 
 #pragma warning( disable: 4355 ) // disables ' 'this' : used in base member initializer list'
 
+
 ConVar sv_motd_unload_on_dismissal( "sv_motd_unload_on_dismissal", "0", 0, "If enabled, the MOTD contents will be unloaded when the player closes the MOTD." );
 
 #define DAMAGE_FORCE_SCALE_SELF				9
@@ -248,6 +249,8 @@ ConVar tf_halloween_unlimited_spells( "tf_halloween_unlimited_spells", "0", FCVA
 extern ConVar tf_halloween_kart_boost_recharge;
 extern ConVar tf_halloween_kart_boost_duration;
 
+ConVar tf_test_spooky_ragdolls( "tf_test_spooky_ragdolls", "0", FCVAR_ARCHIVE, "All killed players will be spooky." );
+
 ConVar tf_halloween_kart_impact_force( "tf_halloween_kart_impact_force", "0.75f", FCVAR_CHEAT, "Impact force scaler" );
 ConVar tf_halloween_kart_impact_damage( "tf_halloween_kart_impact_damage", "1.0f", FCVAR_CHEAT, "Impact damage scaler" );
 ConVar tf_halloween_kart_impact_rate( "tf_halloween_kart_impact_rate", "0.5f", FCVAR_CHEAT, "rate of allowing impact damage" );
@@ -277,6 +280,7 @@ extern ConVar sv_vote_allow_spectators;
 ConVar sv_vote_late_join_time( "sv_vote_late_join_time", "90", FCVAR_NONE, "Grace period after the match starts before players who join the match receive a vote-creation cooldown" );
 ConVar sv_vote_late_join_cooldown( "sv_vote_late_join_cooldown", "300", FCVAR_NONE, "Length of the vote-creation cooldown when joining the server after the grace period has expired" );
 
+extern ConVar tf_voice_command_suspension_mode;
 extern ConVar tf_feign_death_duration;
 extern ConVar spec_freeze_time;
 extern ConVar spec_freeze_traveltime;
@@ -430,6 +434,7 @@ public:
 	CNetworkVar( int, m_iClass );
 	CNetworkVar( bool, m_bGoldRagdoll );
 	CNetworkVar( bool, m_bIceRagdoll );
+	CNetworkVar( bool, m_bSpookyRagdoll )
 	CNetworkVar( bool, m_bCritOnHardHit );
 	CNetworkVar( float, m_flHeadScale );
 	CNetworkVar( float, m_flTorsoScale );
@@ -459,6 +464,7 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CTFRagdoll, DT_TFRagdoll )
 	SendPropUtlVector( SENDINFO_UTLVECTOR( m_hRagWearables ), 8, SendPropEHandle( NULL, 0 ) ),
 	SendPropBool( SENDINFO( m_bGoldRagdoll ) ),
 	SendPropBool( SENDINFO( m_bIceRagdoll ) ),
+	SendPropBool( SENDINFO( m_bSpookyRagdoll ) ),
 	SendPropBool( SENDINFO( m_bCritOnHardHit ) ),
 	SendPropFloat( SENDINFO( m_flHeadScale ) ),
 	SendPropFloat( SENDINFO( m_flTorsoScale ) ),
@@ -2802,6 +2808,7 @@ void CTFPlayer::PrecacheMvM()
 	PrecacheScriptSound( "MVM.DeployBombGiant" );
 	PrecacheScriptSound( "Weapon_Upgrade.ExplosiveHeadshot" );
 	PrecacheScriptSound( "Spy.MVM_Chuckle" );
+	PrecacheScriptSound( "Spy.MVM_TeaseVictim" );
 	PrecacheScriptSound( "MVM.Robot_Engineer_Spawn" );
 	PrecacheScriptSound( "MVM.Robot_Teleporter_Deliver" );
 	PrecacheScriptSound( "MVM.MoneyPickup" );
@@ -3121,6 +3128,9 @@ void CTFPlayer::PrecacheTFPlayer()
 	// precache the EOTL bomb cart replacements
 	PrecacheModel( "models/props_trainyard/bomb_eotl_blue.mdl" );
 	PrecacheModel( "models/props_trainyard/bomb_eotl_red.mdl" );
+
+	PrecacheParticleSystem( "halloween_cloak_smoke" );
+	PrecacheParticleSystem( "halloween_spooky_ragdoll" );
 }
 
 //-----------------------------------------------------------------------------
@@ -9095,44 +9105,40 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		}
 	}
 	
-	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MEDIC ) )
+	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MEDIC ) && pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_BONESAW )
 	{
-		CTFWeaponBase *pAttackerWeapon = pTFAttacker->GetActiveTFWeapon();
-		if ( pAttackerWeapon && pAttackerWeapon->GetWeaponID() == TF_WEAPON_BONESAW )
+		CTFBonesaw *pBoneSaw = static_cast< CTFBonesaw* >( pWeapon );
+		if ( pBoneSaw->GetBonesawType() == BONESAW_UBER_SAVEDONDEATH )
 		{
-			CTFBonesaw *pBoneSaw = static_cast< CTFBonesaw* >( pAttackerWeapon );
-			if ( pBoneSaw->GetBonesawType() == BONESAW_UBER_SAVEDONDEATH )
+			// Spawn their spleen
+			CPhysicsProp *pRandomInternalOrgan = dynamic_cast< CPhysicsProp* >( CreateEntityByName( "prop_physics_override" ) );
+			if ( pRandomInternalOrgan )
 			{
-				// Spawn their spleen
-				CPhysicsProp *pRandomInternalOrgan = dynamic_cast< CPhysicsProp* >( CreateEntityByName( "prop_physics_override" ) );
-				if ( pRandomInternalOrgan )
-				{
-					pRandomInternalOrgan->SetCollisionGroup( COLLISION_GROUP_DEBRIS );
-					pRandomInternalOrgan->AddFlag( FL_GRENADE );
-					char buf[512];
-					Q_snprintf( buf, sizeof( buf ), "%.10f %.10f %.10f", GetAbsOrigin().x, GetAbsOrigin().y, GetAbsOrigin().z );
-					pRandomInternalOrgan->KeyValue( "origin", buf );
-					Q_snprintf( buf, sizeof( buf ), "%.10f %.10f %.10f", GetAbsAngles().x, GetAbsAngles().y, GetAbsAngles().z );
-					pRandomInternalOrgan->KeyValue( "angles", buf );
-					pRandomInternalOrgan->KeyValue( "model", "models/player/gibs/random_organ.mdl" );
-					pRandomInternalOrgan->KeyValue( "fademindist", "-1" );
-					pRandomInternalOrgan->KeyValue( "fademaxdist", "0" );
-					pRandomInternalOrgan->KeyValue( "fadescale", "1" );
-					pRandomInternalOrgan->KeyValue( "inertiaScale", "1.0" );
-					pRandomInternalOrgan->KeyValue( "physdamagescale", "0.1" );
-					DispatchSpawn( pRandomInternalOrgan );
-					pRandomInternalOrgan->m_takedamage = DAMAGE_YES;	// Take damage, otherwise this can block trains
-					pRandomInternalOrgan->SetHealth( 100 );
-					pRandomInternalOrgan->Activate();
+				pRandomInternalOrgan->SetCollisionGroup( COLLISION_GROUP_DEBRIS );
+				pRandomInternalOrgan->AddFlag( FL_GRENADE );
+				char buf[512];
+				Q_snprintf( buf, sizeof( buf ), "%.10f %.10f %.10f", GetAbsOrigin().x, GetAbsOrigin().y, GetAbsOrigin().z );
+				pRandomInternalOrgan->KeyValue( "origin", buf );
+				Q_snprintf( buf, sizeof( buf ), "%.10f %.10f %.10f", GetAbsAngles().x, GetAbsAngles().y, GetAbsAngles().z );
+				pRandomInternalOrgan->KeyValue( "angles", buf );
+				pRandomInternalOrgan->KeyValue( "model", "models/player/gibs/random_organ.mdl" );
+				pRandomInternalOrgan->KeyValue( "fademindist", "-1" );
+				pRandomInternalOrgan->KeyValue( "fademaxdist", "0" );
+				pRandomInternalOrgan->KeyValue( "fadescale", "1" );
+				pRandomInternalOrgan->KeyValue( "inertiaScale", "1.0" );
+				pRandomInternalOrgan->KeyValue( "physdamagescale", "0.1" );
+				DispatchSpawn( pRandomInternalOrgan );
+				pRandomInternalOrgan->m_takedamage = DAMAGE_YES;	// Take damage, otherwise this can block trains
+				pRandomInternalOrgan->SetHealth( 100 );
+				pRandomInternalOrgan->Activate();
 
-					Vector vecImpulse = RandomVector( -1.f, 1.f );
-					vecImpulse.z = 1.f;
-					VectorNormalize( vecImpulse );
-					Vector vecVelocity = vecImpulse * 250.0;
-					pRandomInternalOrgan->ApplyAbsVelocityImpulse( vecVelocity );
+				Vector vecImpulse = RandomVector( -1.f, 1.f );
+				vecImpulse.z = 1.f;
+				VectorNormalize( vecImpulse );
+				Vector vecVelocity = vecImpulse * 250.0;
+				pRandomInternalOrgan->ApplyAbsVelocityImpulse( vecVelocity );
 
-					pRandomInternalOrgan->ThinkSet( &CBaseEntity::SUB_Remove, gpGlobals->curtime + 5.f, "DieContext" );
-				}
+				pRandomInternalOrgan->ThinkSet( &CBaseEntity::SUB_Remove, gpGlobals->curtime + 5.f, "DieContext" );
 			}
 		}
 	}
@@ -12426,6 +12432,23 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			// Catches the case where we're killed directly by the sentrygun (i.e. bullets)
 			// Look at the sentrygun
 			m_hObserverTarget.Set( info.GetInflictor() ); 
+
+			//// [rune] HALLOWEEN: Spooky ragdolls for sentry kills with spelled Wrench
+			//CTFPlayer* pSentryOwner = ToTFPlayer(info.GetInflictor()->GetOwnerEntity());
+			//if ( pSentryOwner )
+			//{
+			//	CTFWeaponBase* pWrench = pSentryOwner->GetActiveTFWeapon();
+			//	if( pWrench )
+			//	{
+			//		int iSpookyRagdoll = 0;
+			//		CALL_ATTRIB_HOOK_INT_ON_OTHER( pWrench, iSpookyRagdoll, halloween_spooky_ragdolls );
+
+			//		if ( iSpookyRagdoll > 0 || tf_test_spooky_ragdolls.GetBool() )
+			//		{
+			//			
+			//		}
+			//	}
+			//}
 		}
 		// See if we were killed by a projectile emitted from a base object. The attacker
 		// will still be the owner of that object, but we want the deathcam to point to the 
@@ -12722,6 +12745,13 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iRagdollsPlasmaEffect, ragdolls_plasma_effect );
 	}
 
+	int iSpookyRagdoll = 0;
+	if ( info.GetWeapon() )
+	{
+		CALL_ATTRIB_HOOK_INT_ON_OTHER(pKillerWeapon, iSpookyRagdoll, halloween_spooky_ragdolls);
+		iSpookyRagdoll = tf_test_spooky_ragdolls.GetBool() != 0;
+	}
+
 	int iCustomDamage = info.GetDamageCustom();
 	if ( iRagdollsPlasmaEffect )
 	{
@@ -12746,7 +12776,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 // 			}
 // 		}
 
-		CreateRagdollEntity( bGib, bBurning, bElectrocuted, bOnGround, bCloakedCorpse, iGoldRagdoll != 0, iIceRagdoll != 0, iRagdollsBecomeAsh != 0, iCustomDamage, ( iCritOnHardHit != 0 ) );
+		CreateRagdollEntity( bGib, bBurning, bElectrocuted, bOnGround, bCloakedCorpse, iGoldRagdoll != 0, iIceRagdoll != 0, iSpookyRagdoll !=0, iRagdollsBecomeAsh != 0, iCustomDamage, ( iCritOnHardHit != 0 ) );
 	}
 
 
@@ -15583,13 +15613,13 @@ void CTFPlayer::StopRagdollDeathAnim( void )
 //-----------------------------------------------------------------------------
 void CTFPlayer::CreateRagdollEntity( void )
 {
-	CreateRagdollEntity( false, false, false, false, false, false, false, false );
+	CreateRagdollEntity( false, false, false, false, false, false, false, false, false );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Create a ragdoll entity to pass to the client.
 //-----------------------------------------------------------------------------
-void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocuted, bool bOnGround, bool bCloakedCorpse, bool bGoldRagdoll, bool bIceRagdoll, bool bBecomeAsh, int iDamageCustom, bool bCritOnHardHit )
+void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocuted, bool bOnGround, bool bCloakedCorpse, bool bGoldRagdoll, bool bIceRagdoll, bool bSpookyRagdoll, bool bBecomeAsh, int iDamageCustom, bool bCritOnHardHit )
 {
 	// If we already have a ragdoll destroy it.
 	CTFRagdoll *pRagdoll = dynamic_cast<CTFRagdoll*>( m_hRagdoll.Get() );
@@ -15619,6 +15649,7 @@ void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bElectrocute
 		pRagdoll->m_iClass = GetPlayerClass()->GetClassIndex();
 		pRagdoll->m_bGoldRagdoll = bGoldRagdoll;
 		pRagdoll->m_bIceRagdoll = bIceRagdoll;
+		pRagdoll->m_bSpookyRagdoll = bSpookyRagdoll;
 		pRagdoll->m_bBecomeAsh = bBecomeAsh;
 		pRagdoll->m_bCritOnHardHit = bCritOnHardHit;
 		pRagdoll->m_flHeadScale = m_flHeadScale;
@@ -15833,6 +15864,13 @@ void CTFPlayer::CreateFeignDeathRagdoll( const CTakeDamageInfo& info, bool bGib,
 				CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iIceRagdoll, set_turn_to_ice );
 			}
 			pRagdoll->m_bIceRagdoll = iIceRagdoll != 0;
+
+			int iSpookyRagdoll = 0;
+			if (info.GetWeapon())
+			{
+				CALL_ATTRIB_HOOK_INT_ON_OTHER(info.GetWeapon(), iSpookyRagdoll, halloween_spooky_ragdolls);
+			}
+			pRagdoll->m_bSpookyRagdoll = iSpookyRagdoll != 0;
 
 			int iRagdollsBecomeAsh = 0;
 			if ( info.GetWeapon() )
@@ -19996,7 +20034,20 @@ bool CTFPlayer::ShouldShowVoiceSubtitleToEnemy( void )
 //-----------------------------------------------------------------------------
 bool CTFPlayer::CanSpeakVoiceCommand( void )
 {
-	return ( gpGlobals->curtime > m_flNextVoiceCommandTime );
+	if ( tf_voice_command_suspension_mode.GetInt() == 1 )
+		return false;
+
+	if ( gpGlobals->curtime <= m_flNextVoiceCommandTime )
+		return false;
+
+	// misyl: New F2P voice command rate-limiting path.
+	if ( BHaveChatSuspensionInCurrentMatch() && tf_voice_command_suspension_mode.GetInt() == 2 )
+	{
+		if ( !m_RateLimitedVoiceCommandTokenBucket.BTakeToken( gpGlobals->curtime ) )
+			return false;
+	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
