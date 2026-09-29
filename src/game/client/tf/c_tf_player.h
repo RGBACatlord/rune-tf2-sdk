@@ -344,6 +344,12 @@ public:
 	// ITFMvMBossProgressUser
 	virtual const char* GetBossProgressImageName() const OVERRIDE;
 	virtual float GetBossStatusProgress() const OVERRIDE;
+	
+	// Workshop Cloak Dye spell
+	void			UpdateCloakDyeEffect( void );
+	int				GetCloakDyeSpellIndex( void );
+	bool			ShouldShowCloakDyeEffect( void );
+	Vector			GetCloakTintColor( float flPercentInvisible, bool bViewmodel );
 
 protected:
 	CNetworkVarEmbedded(	CAttributeContainerPlayer, m_AttributeManager );
@@ -775,6 +781,10 @@ public:
 	HPARTICLEFFECT m_pMVMBotRadiowave;
 
 	HPARTICLEFFECT m_pRuneChargeReadyEffect;
+
+	// particle attached for cloak dye spell
+	CNewParticleEffect	*m_pCloakDyeEffect;
+	int					m_iCloakDyeSpellLast;	// spell variant this was attached for, or CLOAK_DYE_NONE
 
 	enum EKartParticles
 	{

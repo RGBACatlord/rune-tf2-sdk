@@ -3097,6 +3097,14 @@ void CTFPlayer::PrecacheTFPlayer()
 	PrecacheParticleSystem( "halloween_player_death_blue" );
 	PrecacheParticleSystem( "halloween_player_death" );
 
+	for ( int i = 0 ; i < CLOAK_DYE_COUNT; i++ )
+	{
+		if ( g_CloakDyeSpells[i].m_pszParticleName )
+		{
+			PrecacheParticleSystem( g_CloakDyeSpells[i].m_pszParticleName );
+		}
+	}
+
 	PrecacheScriptSound( "Bombinomicon.Explode" );
 
 	PrecacheScriptSound( "Weapon_DRG_Wrench.Teleport" );

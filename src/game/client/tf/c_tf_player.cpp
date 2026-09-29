@@ -50,6 +50,7 @@
 #include "eventlist.h"
 #include "input.h"
 #include "tf_weapon_medigun.h"
+#include "tf_weapon_invis.h"
 #include "tf_weapon_pipebomblauncher.h"
 #include "tf_weapon_shovel.h"
 #include "tf_hud_mediccallers.h"
@@ -1702,6 +1703,119 @@ bool CSpyInvisProxy::Init( IMaterial *pMaterial, KeyValues* pKeyValues )
 ConVar tf_teammate_max_invis( "tf_teammate_max_invis", "0.95", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
 //-----------------------------------------------------------------------------
+// WORKSHOP SPELL		Cloak Dyes
+// Relevant workshop link:  https://steamcommunity.com/sharedfiles/filedetails/?id=3810086236
+//-----------------------------------------------------------------------------
+
+ConVar tf_debug_cloak_dye_spell( "tf_debug_cloak_dye_spell", "-1", FCVAR_CHEAT );
+
+int C_TFPlayer::GetCloakDyeSpellIndex( void )
+{
+	if ( tf_debug_cloak_dye_spell.GetInt() >= 0 )
+		return MIN( tf_debug_cloak_dye_spell.GetInt(), CLOAK_DYE_COUNT - 1 );
+
+	CTFWeaponInvis *pInvisWatch = dynamic_cast< CTFWeaponInvis* >( GetEntityForLoadoutSlot( LOADOUT_POSITION_PDA2 ) );
+	if ( !pInvisWatch )
+		return CLOAK_DYE_NONE;
+
+	int iCloakDyeSpell = CLOAK_DYE_NONE;
+	CALL_ATTRIB_HOOK_INT_ON_OTHER( pInvisWatch, iCloakDyeSpell, halloween_cloak_dye );
+
+	if ( iCloakDyeSpell <= CLOAK_DYE_NONE || iCloakDyeSpell >= CLOAK_DYE_COUNT )
+		return CLOAK_DYE_NONE;
+
+	return iCloakDyeSpell;
+}
+
+bool C_TFPlayer::ShouldShowCloakDyeEffect( void )
+{
+	if ( !IsEnemyPlayer() )
+		return true;
+
+	// show up in freezecam
+	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocalPlayer )
+		return false;
+
+	int iObserverMode = pLocalPlayer->GetObserverMode();
+	if ( ( iObserverMode == OBS_MODE_FREEZECAM || iObserverMode == OBS_MODE_DEATHCAM ) &&
+		 pLocalPlayer->GetObserverTarget() == this )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+void C_TFPlayer::UpdateCloakDyeEffect( void )
+{
+	int iCloakDyeSpell = CLOAK_DYE_NONE;
+
+	if ( IsAlive() && m_Shared.IsStealthed() && ShouldShowCloakDyeEffect() )
+	{
+		iCloakDyeSpell = GetCloakDyeSpellIndex();
+	}
+
+	if ( iCloakDyeSpell == m_iCloakDyeSpellLast )
+		return;
+
+	if ( m_pCloakDyeEffect )
+	{
+		ParticleProp()->StopEmission( m_pCloakDyeEffect );
+		m_pCloakDyeEffect = NULL;
+	}
+
+	const char *pszParticleName = g_CloakDyeSpells[ iCloakDyeSpell ].m_pszParticleName;
+	if ( pszParticleName && !(IsLocalPlayer())  )
+	{
+		m_pCloakDyeEffect = ParticleProp()->Create( pszParticleName, PATTACH_ABSORIGIN_FOLLOW );
+	}
+
+	m_iCloakDyeSpellLast = iCloakDyeSpell;
+}
+
+static Vector TF_GetTeamCloakColor( int iTeam )
+{
+	switch ( iTeam )
+	{
+		case TF_TEAM_RED:
+			return Vector( 1.0f, 0.5f, 0.4f );
+
+		case TF_TEAM_BLUE:
+		default:
+			return Vector( 0.4f, 0.5f, 1.0f );
+	}
+}
+
+Vector C_TFPlayer::GetCloakTintColor( float flPercentInvisible, bool bViewmodel )
+{
+	Vector vecBase = bViewmodel ? Vector( 1.0f, 1.0f, 1.0f ) : TF_GetTeamCloakColor( GetTeamNumber() );
+
+	int iCloakDyeSpell = GetCloakDyeSpellIndex();
+	if ( iCloakDyeSpell == CLOAK_DYE_NONE || !ShouldShowCloakDyeEffect() )
+		return vecBase;
+
+	const CloakDyeSpell_t &spell = g_CloakDyeSpells[ iCloakDyeSpell ];
+
+	// team color is just the normal color but .. more
+	Vector vecDye = spell.m_bTeamColorPulse ? TF_GetTeamCloakColor( GetTeamNumber() ) * 1.5f : spell.m_vecDyeColor;
+	
+	if ( bViewmodel )
+	{
+		vecDye *= 1;
+	}
+
+	const float t = 0.5f + 0.5f * sinf( gpGlobals->curtime * TF_CLOAK_DYE_OSC_SPEED + ( entindex() * 256 ) );
+
+	Vector vecOsc;
+	VectorLerp( vecBase, vecDye, t, vecOsc );
+
+	Vector vecFinal;
+	VectorLerp( vecOsc * 0.2f, vecOsc, flPercentInvisible, vecFinal );
+	return vecFinal;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 // Input  :
 //-----------------------------------------------------------------------------
@@ -1731,22 +1845,10 @@ void CSpyInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
 	}
 	else
 	{
-		float r = 1.0f, g = 1.0f, b = 1.0f;
 		fInvis = pPlayer->GetEffectiveInvisibilityLevel();
 
-		switch( pPlayer->GetTeamNumber() )
-		{
-		case TF_TEAM_RED:
-			r = 1.0; g = 0.5; b = 0.4;
-			break;
-
-		case TF_TEAM_BLUE:
-		default:
-			r = 0.4; g = 0.5; b = 1.0;
-			break;
-		}
-
-		m_pCloakColorTint->SetVecValue( r, g, b );
+		Vector vecTint = pPlayer->GetCloakTintColor( fInvis, false );
+		m_pCloakColorTint->SetVecValue( vecTint.x, vecTint.y, vecTint.z );
 	}
 
 	m_pPercentInvisible->SetFloatValue( fInvis );
@@ -3916,6 +4018,9 @@ C_TFPlayer::C_TFPlayer() :
 
 	m_pRuneChargeReadyEffect = NULL;
 
+	m_pCloakDyeEffect = NULL;
+	m_iCloakDyeSpellLast = CLOAK_DYE_NONE;
+
 	m_aGibs.Purge();
 	m_aNormalGibs.PurgeAndDeleteElements();
 	m_aSillyGibs.Purge();
@@ -4764,6 +4869,9 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 				pTFOldObserverTarget->UpdateWearables();
 				pTFOldObserverTarget->SetBodygroupsDirty();
 
+				// stop halloween cloak dye spell particles
+				pTFOldObserverTarget->UpdateCloakDyeEffect();
+
 				if ( IsReplay() )
 				{
 					m_hOldObserverTarget = GetObserverTarget();
@@ -4782,6 +4890,9 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 				// Update visibility of any worn items.
 				pTFObserverTarget->UpdateWearables();
 				pTFObserverTarget->SetBodygroupsDirty();
+				
+				// halloween spell
+				pTFObserverTarget->UpdateCloakDyeEffect();
 			}
 		}
 
@@ -6105,6 +6216,9 @@ void C_TFPlayer::ClientThink()
 		ParticleProp()->StopEmission( m_pRuneChargeReadyEffect );
 		m_pRuneChargeReadyEffect = NULL;
 	}
+
+	// halloween spell
+	UpdateCloakDyeEffect();
 
 	UpdateRuneIcon();
 
@@ -10036,6 +10150,9 @@ void C_TFPlayer::UpdateSpyStateChange( void )
 
 		m_Shared.EndRadiusHealEffect();
 	}
+
+	// halloween spell
+	UpdateCloakDyeEffect();
 
 	// Force Weapon updates
 	if ( GetActiveWeapon() )

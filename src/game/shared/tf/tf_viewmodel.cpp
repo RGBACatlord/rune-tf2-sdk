@@ -419,11 +419,33 @@ const char* CTFViewModel::ModifyEventParticles( const char* token )
 class CViewModelInvisProxy : public CBaseInvisMaterialProxy
 {
 public:
+	CViewModelInvisProxy( void ) : m_pCloakColorTint( NULL ) {}
+
+	virtual bool Init( IMaterial *pMaterial, KeyValues *pKeyValues ) OVERRIDE;
 	virtual void OnBind( C_BaseEntity *pC_BaseEntity );
+
+private:
+	IMaterialVar *m_pCloakColorTint;
 };
 
 #define TF_VM_MIN_INVIS		0.22
 #define TF_VM_MAX_INVIS		0.5
+
+//-----------------------------------------------------------------------------
+// Purpose: Get pointer to the cloak dye color value, so the viewmodel's
+//			cloak can be tinted the same way the player model's is.
+//-----------------------------------------------------------------------------
+bool CViewModelInvisProxy::Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+{
+	bool bInvis = CBaseInvisMaterialProxy::Init( pMaterial, pKeyValues );
+
+	bool bTint;
+	m_pCloakColorTint = pMaterial->FindVar( "$cloakColorTint", &bTint );
+
+	// Not every invis-capable viewmodel material has a tint var - that's fine,
+	// OnBind just skips setting it below.
+	return bInvis;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -477,6 +499,12 @@ void CViewModelInvisProxy::OnBind( C_BaseEntity *pEnt )
 	float flPercentInvisible = pPlayer->GetPercentInvisible();
 	float flWeaponInvis = flPercentInvisible;
 
+	if ( m_pCloakColorTint )
+	{
+		Vector vecTint = pPlayer->GetCloakTintColor( flPercentInvisible, bIsViewModel );
+		m_pCloakColorTint->SetVecValue( vecTint.x, vecTint.y, vecTint.z );
+	}
+
 	if ( bIsViewModel == true )
 	{
 		// remap from 0.22 to 0.5
@@ -512,8 +540,36 @@ EXPOSE_INTERFACE( CViewModelInvisProxy, IMaterialProxy, "vm_invis" IMATERIAL_PRO
 class CInvisProxy : public CBaseInvisMaterialProxy
 {
 public:
-	virtual void OnBind( C_BaseEntity *pC_BaseEntity ) OVERRIDE;
+	CInvisProxy( void );
+	virtual bool		Init( IMaterial* pMaterial, KeyValues* pKeyValues ) OVERRIDE;
+	virtual void		OnBind( C_BaseEntity *pC_BaseEntity ) OVERRIDE;
+
+private:
+	IMaterialVar		*m_pCloakColorTint;
 };
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+CInvisProxy::CInvisProxy( void )
+{
+	m_pCloakColorTint = NULL;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Get pointer to the color value
+// Input  : *pMaterial - 
+//-----------------------------------------------------------------------------
+bool CInvisProxy::Init( IMaterial* pMaterial, KeyValues* pKeyValues )
+{
+	// Need to get the material var
+	bool bInvis = CBaseInvisMaterialProxy::Init( pMaterial, pKeyValues );
+
+	bool bTint;
+	m_pCloakColorTint = pMaterial->FindVar( "$cloakColorTint", &bTint );
+
+	return ( bInvis && bTint );
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -578,6 +634,12 @@ void CInvisProxy::OnBind( C_BaseEntity *pC_BaseEntity )
 		float flPercentInvisible = pPlayer->GetPercentInvisible();
 		float flWeaponInvis = flPercentInvisible;
 
+		if ( m_pCloakColorTint )
+		{
+			Vector vecTint = pPlayer->GetCloakTintColor( flPercentInvisible, true );
+			m_pCloakColorTint->SetVecValue( vecTint.x, vecTint.y, vecTint.z );
+		}
+
 		// remap from 0.22 to 0.5
 		// but drop to 0.0 if we're not invis at all
 		flWeaponInvis = ( flPercentInvisible < 0.01 ) ?
@@ -601,7 +663,15 @@ void CInvisProxy::OnBind( C_BaseEntity *pC_BaseEntity )
 	}
 	else
 	{
-		m_pPercentInvisible->SetFloatValue( pPlayer->GetEffectiveInvisibilityLevel() );
+		float flEffectiveInvis = pPlayer->GetEffectiveInvisibilityLevel();
+
+		if ( m_pCloakColorTint )
+		{
+			Vector vecTint = pPlayer->GetCloakTintColor( flEffectiveInvis, false );
+			m_pCloakColorTint->SetVecValue( vecTint.x, vecTint.y, vecTint.z );
+		}
+
+		m_pPercentInvisible->SetFloatValue( flEffectiveInvis );
 	}
 }
 

@@ -2830,5 +2830,43 @@ enum AttributeMeter_Type_t
 #define TF_GRENADE_PROJECTILE_MINS	Vector( -2.0f, -2.0f, -2.0f )
 #define TF_GRENADE_PROJECTILE_MAXS	Vector( 2.0f, 2.0f, 2.0f )
 
+//-----------------------------------------------------------------------------
+// WORKSHOP SPELL		Cloak Dyes
+// Relevant workshop link:  https://steamcommunity.com/sharedfiles/filedetails/?id=3810086236
+//-----------------------------------------------------------------------------
+
+#define TF_CLOAK_DYE_OSC_SPEED 2.3f		// oscillation speed shared by all dys
+
+enum
+{
+	CLOAK_DYE_NONE = 0,
+	CLOAK_DYE_VIOLET,
+	CLOAK_DYE_PUMPKIN,			// orange
+	CLOAK_DYE_GHOSTLY,			// spooky teal...
+//	CLOAK_DYE_BONEWHITE,
+	CLOAK_DYE_TEAMCOLOR_PULSE,	// just pulses usual cloak tint but stronger
+
+	CLOAK_DYE_COUNT
+};
+
+struct CloakDyeSpell_t
+{
+	// cloak tint oscillates between the player's team color and this dye color
+	Vector		m_vecDyeColor;
+	bool		m_bTeamColorPulse;	// pulses the team color itself, ignores m_vecDyeColor
+
+	const char* m_pszParticleName;	// attached while cloaked to make it a bit more interesting...
+};
+
+static const CloakDyeSpell_t g_CloakDyeSpells[CLOAK_DYE_COUNT]=
+{
+	// dye color						teamcolor pulse	particle
+	{ Vector( 0.f, 0.f, 0.f ),			false,			NULL },	// NONE
+	{ Vector( 1.0f, 0.25f, 1.0f ),		false,			NULL },
+	{ Vector( 1.1f, 0.45f, 0.2f ),		false,			NULL },
+	{ Vector( 0.25f, 1.1f, 1.1f ),		false,			NULL },
+//	{ Vector( 0.3f, 0.3f, 0.3f ),		false,			"spell_cloakdye_dark" },
+	{ Vector( 0.f, 0.f, 0.f ),			true,			NULL },
+};
+
 #endif // TF_SHAREDDEFS_H
-  
